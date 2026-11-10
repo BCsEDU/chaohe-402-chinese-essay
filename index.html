@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>402 班 國語第二課作文寫作平台</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #333; }
+        .container { max-width: 820px; margin: 0 auto; background: white; padding: 25px 30px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        
+        /* 伺服器連線狀態列 */
+        .status-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.88em;
+            margin-bottom: 15px;
+            background: #eef2f7;
+            color: #475569;
+            transition: all 0.3s ease;
+        }
+        .status-banner.connected {
+            background: #ecfdf5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        .status-banner.disconnected {
+            background: #fffbeb;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+        .status-btn {
+            background: none;
+            border: 1px solid currentColor;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.85em;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        h1 { text-align: center; color: #1e293b; margin-top: 5px; margin-bottom: 20px; font-size: 1.8em; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #334155; font-size: 1.05em; }
+        select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        select { background-color: #fff; font-weight: 600; color: #1e293b; }
+        textarea { height: 260px; resize: vertical; line-height: 1.7; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 8px; transition: border-color 0.3s; font-size: 16px; }
+        textarea:focus { border-color: #0d9488; outline: none; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+        
+        /* 標籤頁設計 */
+        .tabs { display: flex; gap: 6px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 1px; }
+        .tab-btn { background: #f1f5f9; border: none; padding: 11px 18px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 15px; font-weight: bold; color: #64748b; transition: all 0.25s; flex: 1; text-align: center; }
+        .tab-btn:hover { background: #e2e8f0; }
+        .tab-btn.active { background: #0d9488; color: white; }
+
+        .para-section { background: #ffffff; padding: 18px 20px; border: 1px solid #e2e8f0; border-radius: 0 8px 8px 8px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); display: none; }
+        .para-section.active { display: block; }
+        
+        .para-title { font-size: 1.2em; color: #1e293b; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .badge { font-size: 0.78em; background: #ccfbf1; color: #0f766e; padding: 5px 12px; border-radius: 12px; font-weight: normal; }
+        
+        .hint-box { background: #f8fafc; border-left: 4px solid #f59e0b; padding: 12px 15px; border-radius: 6px; margin-bottom: 14px; font-size: 0.95em; line-height: 1.6; }
+
+        .buttons { display: flex; gap: 12px; position: sticky; bottom: 15px; background: white; padding-top: 12px; border-top: 1px solid #e2e8f0; z-index: 10; }
+        button.action-btn { flex: 1; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .btn-save { background-color: #f59e0b; color: white; }
+        .btn-submit { background-color: #10b981; color: white; }
+        .btn-save:hover { background-color: #d97706; }
+        .btn-submit:hover { background-color: #059669; }
+        
+        #feedback-box { margin-top: 25px; padding: 20px; background-color: #f0fdfa; border-left: 5px solid #0d9488; border-radius: 8px; display: none; }
+        #feedback-box h3 { margin-top: 0; color: #0f766e; }
+        #feedback-content { line-height: 1.7; color: #1e293b; }
+        
+        .loading { display: none; text-align: center; margin-top: 20px; color: #64748b; font-weight: bold; padding: 15px; background: #f8fafc; border-radius: 8px; }
+        
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 18px 16px; }
+            .tab-btn { padding: 8px 10px; font-size: 14px; }
+            .buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 伺服器連線狀態列 -->
+        <div id="host-banner" class="status-banner disconnected">
+            <span id="host-status-text">⏳ 正在連線秉辰老師主機...</span>
+            <button class="status-btn" onclick="promptManualHost()">⚙️ 設定網址</button>
+        </div>
+
+        <h1>📝 402 班 國語第二課作文寫作</h1>
+        
+        <div class="form-group">
+            <label for="student_id">請選擇你的座號：</label>
+            <select id="student_id">
+                <option value="">-- 點我選擇座號 --</option>
+            </select>
+        </div>
+        
+        <!-- 標籤頁按鈕 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('p1')">第一段</button>
+            <button class="tab-btn" onclick="switchTab('p2')">第二段</button>
+            <button class="tab-btn" onclick="switchTab('p3')">第三段</button>
+            <button class="tab-btn" onclick="switchTab('p4')">第四段</button>
+        </div>
+
+        <!-- 各段落區塊 -->
+        <div id="section-p1" class="para-section active">
+            <div class="para-title">第一段 <span class="badge">結構：事由 ➔ 經過 ➔ 結果</span></div>
+            <div id="hint-p1" class="hint-box">請先選擇座號，系統會自動載入你的專屬寫作骨架！</div>
+            <textarea id="p1" placeholder="請在這裡輸入第一段..."></textarea>
+        </div>
+
+        <div id="section-p2" class="para-section">
+            <div class="para-title">第二段 <span class="badge">結構：事由 ➔ 經過 ➔ 結果 ➔ 感想</span></div>
+            <div id="hint-p2" class="hint-box">請先選擇座號，系統會自動載入你的專屬寫作骨架！</div>
+            <textarea id="p2" placeholder="請在這裡輸入第二段..."></textarea>
+        </div>
+
+        <div id="section-p3" class="para-section">
+            <div class="para-title">第三段 <span class="badge">結構：事由 ➔ 經過 ➔ 結果 ➔ 感想</span></div>
+            <div id="hint-p3" class="hint-box">請先選擇座號，系統會自動載入你的專屬寫作骨架！</div>
+            <textarea id="p3" placeholder="請在這裡輸入第三段..."></textarea>
+        </div>
+
+        <div id="section-p4" class="para-section">
+            <div class="para-title">第四段 <span class="badge">結構：事由 ➔ 經過 ➔ 結果 ➔ 感想</span></div>
+            <div id="hint-p4" class="hint-box">請先選擇座號，系統會自動載入你的專屬寫作骨架！</div>
+            <textarea id="p4" placeholder="請在這裡輸入第四段..."></textarea>
+        </div>
+        
+        <div class="buttons">
+            <button class="action-btn btn-save" onclick="saveDraft(true)">💾 立即存檔 (系統亦隨打即存)</button>
+            <button class="action-btn btn-submit" onclick="submitEssay()">✅ 完成後請老師檢查</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <span id="save-status" style="font-size: 0.9em; color: #10b981; font-weight: bold;">🟢 系統已啟動隨打即存</span>
+            <span id="sync-status" style="font-size: 0.85em; color: #64748b;">本機暫存就緒</span>
+        </div>
+
+        <div class="loading" id="loading">秉辰師分身正在閱讀你的段落並核對專屬目標，請稍候... ⏳</div>
+        
+        <div id="feedback-box">
+            <h3>🤖 秉辰師分身的指導建議 (<span id="feedback-title">第一段</span>)：</h3>
+            <div id="feedback-content"></div>
+        </div>
+    </div>
+
+    <!-- 載入 Markdown 解析工具 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        // --- 核心配置 ---
+        const GIST_API_URL = 'https://gist.githubusercontent.com/BCsEDU/9d1f2d2153f5e022351573b606e81b0e/raw/api.json';
+        const SEATS = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28];
+        
+        let apiBase = '';
+        let isHostOnline = false;
+        let allGuides = {};
+        let currentTab = 'p1';
+        let feedbackData = {};
+        let autoSaveTimer = null;
+        let isLoadingStudent = false;
+
+        const studentIdSelect = document.getElementById('student_id');
+        const feedbackBox = document.getElementById('feedback-box');
+        const feedbackContent = document.getElementById('feedback-content');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const loading = document.getElementById('loading');
+        const saveStatus = document.getElementById('save-status');
+        const syncStatus = document.getElementById('sync-status');
+        const hostBanner = document.getElementById('host-banner');
+        const hostStatusText = document.getElementById('host-status-text');
+
+        // 初始化座號下拉選單
+        function initSeatOptions() {
+            studentIdSelect.innerHTML = '<option value="">-- 點我選擇座號 --</option>';
+            SEATS.forEach(seat => {
+                const opt = document.createElement('option');
+                opt.value = String(seat);
+                opt.textContent = `${seat} 號`;
+                studentIdSelect.appendChild(opt);
+            });
+            // 永遠保持乾淨選擇，不自動還原
+            localStorage.removeItem('402_essay_seat');
+        }
+
+        // 載入專屬引導骨架
+        async function loadGuides() {
+            try {
+                const res = await fetch('guides.json');
+                if (res.ok) {
+                    allGuides = await res.json();
+                }
+            } catch (e) {
+                console.warn('無法載入本地 guides.json:', e);
+            }
+        }
+
+        // 測試伺服器是否連線成功
+        async function checkHostOnline(targetUrl) {
+            try {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 4000);
+                const res = await fetch(`${targetUrl}/ping`, { signal: ctrl.signal });
+                clearTimeout(tid);
+                return res.ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 更新連線狀態 UI
+        function setHostStatus(online, targetUrl = '') {
+            isHostOnline = online;
+            if (online) {
+                hostBanner.className = 'status-banner connected';
+                hostStatusText.innerHTML = `🟢 老師主機連線正常（文章即時同步中）`;
+                if (syncStatus) syncStatus.textContent = '雲端即時同步中';
+            } else {
+                hostBanner.className = 'status-banner disconnected';
+                hostStatusText.innerHTML = `🟡 老師主機尚未啟動連線（文字安全暫存在本機，連線後自動上傳）`;
+                if (syncStatus) syncStatus.textContent = '本機安全保護中';
+            }
+        }
+
+        // 自動探索後端網址
+        async function discoverBackend() {
+            // 本地測試環境
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                apiBase = '';
+                if (await checkHostOnline('')) {
+                    setHostStatus(true);
+                    return;
+                }
+            }
+
+            // 檢查手動指定網址
+            const manual = localStorage.getItem('402_manual_api_url');
+            if (manual && manual.trim().startsWith('http')) {
+                const clean = manual.trim().replace(/\/$/, '');
+                if (await checkHostOnline(clean)) {
+                    apiBase = clean;
+                    setHostStatus(true, clean);
+                    return;
+                }
+            }
+
+            // 從 GitHub Gist 取得最新穿透網址
+            try {
+                const res = await fetch(`${GIST_API_URL}?t=${Date.now()}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.backend_url) {
+                        const candidate = data.backend_url.replace(/\/$/, '');
+                        if (await checkHostOnline(candidate)) {
+                            apiBase = candidate;
+                            setHostStatus(true, candidate);
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Gist 探索失敗:', err);
+            }
+
+            setHostStatus(false);
+        }
+
+        function promptManualHost() {
+            const current = apiBase || localStorage.getItem('402_manual_api_url') || '';
+            const input = prompt('老師主機網址（若有最新 https://...trycloudflare.com 可貼在此處）：', current);
+            if (input !== null) {
+                if (input.trim() === '') {
+                    localStorage.removeItem('402_manual_api_url');
+                    discoverBackend();
+                } else {
+                    const clean = input.trim().replace(/\/$/, '');
+                    localStorage.setItem('402_manual_api_url', clean);
+                    checkHostOnline(clean).then(ok => {
+                        if (ok) {
+                            apiBase = clean;
+                            setHostStatus(true, clean);
+                            alert('✅ 連線成功！');
+                        } else {
+                            alert('⚠️ 該網址無法連線，請確認老師電腦服務是否開啟。');
+                        }
+                    });
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            initSeatOptions();
+            await loadGuides();
+            await discoverBackend();
+
+            // 輸入框綁定自動儲存事件
+            ['p1', 'p2', 'p3', 'p4'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', triggerDebouncedAutoSave);
+                    el.addEventListener('blur', () => {
+                        if (studentIdSelect.value) saveDraft(false);
+                    });
+                }
+            });
+        });
+
+        function triggerDebouncedAutoSave() {
+            if (!studentIdSelect.value) return;
+            if (saveStatus) saveStatus.textContent = '✏️ 正在輸入...';
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                saveDraft(false);
+            }, 1200);
+        }
+
+        // 平板休眠或切換視窗時立刻儲存
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && studentIdSelect.value) {
+                saveDraft(false);
+            }
+        });
+
+        function switchTab(tabId) {
+            if (studentIdSelect.value) {
+                saveDraft(false);
+            }
+
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            
+            document.querySelectorAll('.para-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(`section-${tabId}`).classList.add('active');
+            
+            const names = {'p1':'第一段', 'p2':'第二段', 'p3':'第三段', 'p4':'第四段'};
+            feedbackTitle.textContent = names[tabId];
+            
+            if (feedbackData[tabId] && window.marked) {
+                feedbackContent.innerHTML = marked.parse(feedbackData[tabId]);
+                feedbackBox.style.display = 'block';
+            } else {
+                feedbackBox.style.display = 'none';
+            }
+        }
+
+        function getParagraphs() {
+            return {
+                p1: document.getElementById('p1').value,
+                p2: document.getElementById('p2').value,
+                p3: document.getElementById('p3').value,
+                p4: document.getElementById('p4').value
+            };
+        }
+
+        function setParagraphs(data) {
+            document.getElementById('p1').value = data.p1 || '';
+            document.getElementById('p2').value = data.p2 || '';
+            document.getElementById('p3').value = data.p3 || '';
+            document.getElementById('p4').value = data.p4 || '';
+        }
+
+        function setHints(guide) {
+            const parseTag = (text) => {
+                if (!text || text === '自由發揮' || text === 'NaN' || text === 'null') return '請自由發揮！';
+                if (!text.includes('【')) return text; 
+
+                let html = '<div style="margin-top: 5px; padding-left: 10px; border-left: 3px solid #f59e0b;">';
+                const regex = /【([^】]+)】([^【]*)/g;
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const tag = match[1];
+                    const content = match[2].trim();
+                    let fragments = content.split(/[，。、；]/).filter(p => p.trim().length > 0);
+                    let skeleton = fragments.map(f => `<span style="background: #fffbeb; padding: 2px 7px; border-radius: 4px; margin-right: 5px; display: inline-block; margin-bottom: 4px; border: 1px dashed #f59e0b; color: #b45309; font-weight: 500;">${f} ...</span>`).join(' ➔ ');
+
+                    html += `<div style="margin-bottom: 8px;">
+                                <strong style="color: #d97706;">[${tag}] 寫作骨架：</strong><br>
+                                <div style="font-size: 0.9em; color: #475569; margin-top: 4px; line-height: 1.8;">${skeleton}</div>
+                             </div>`;
+                }
+                html += '</div>';
+                return html;
+            };
+
+            const g = guide || {};
+            document.getElementById('hint-p1').innerHTML = "🎯 <b>請將以下的「專屬寫作骨架」擴充，用你自己的話寫成一段完整的文章：</b><br>" + parseTag(g.p1);
+            document.getElementById('hint-p2').innerHTML = "🎯 <b>請將以下的「專屬寫作骨架」擴充，用你自己的話寫成一段完整的文章：</b><br>" + parseTag(g.p2);
+            document.getElementById('hint-p3').innerHTML = "🎯 <b>請將以下的「專屬寫作骨架」擴充，用你自己的話寫成一段完整的文章：</b><br>" + parseTag(g.p3);
+            document.getElementById('hint-p4').innerHTML = "🎯 <b>請將以下的「專屬寫作骨架」擴充，用你自己的話寫成一段完整的文章：</b><br>" + parseTag(g.p4);
+        }
+
+        // 座號切換
+        studentIdSelect.addEventListener('change', async () => {
+            clearTimeout(autoSaveTimer);
+            isLoadingStudent = true;
+            
+            const studentId = studentIdSelect.value;
+            setParagraphs({});
+            
+            if (!studentId) {
+                feedbackData = {};
+                switchTab(currentTab);
+                isLoadingStudent = false;
+                return;
+            }
+
+            // 清理特定快取字樣
+            if (studentId === '1') {
+                const draft1 = localStorage.getItem('402_draft_1');
+                if (draft1 && draft1.includes('放學回家後，看到媽媽煮的美味料理。')) {
+                    localStorage.removeItem('402_draft_1');
+                }
+            }
+            if (studentId === '7') {
+                const draft7 = localStorage.getItem('402_draft_7');
+                if (draft7 && draft7.includes('蜂蜜燉梨')) {
+                    localStorage.removeItem('402_draft_7');
+                }
+            }
+
+            // 1. 先用本地 guides 即時顯示骨架，無任何延遲
+            const localGuide = allGuides[studentId] || {};
+            setHints(localGuide);
+
+            // 2. 先從本地 LocalStorage 載入草稿（秒開）
+            let content = {};
+            const localDraft = localStorage.getItem('402_draft_' + studentId);
+            if (localDraft) {
+                try {
+                    const parsed = JSON.parse(localDraft);
+                    if (!(studentId === '7' && localDraft.includes('蜂蜜燉梨'))) {
+                        content = parsed;
+                    }
+                } catch(e){}
+            }
+            setParagraphs(content);
+
+            // 3. 若有連線老師後端，從後端資料庫取得最新版同步
+            if (isHostOnline || apiBase !== '') {
+                try {
+                    const res = await fetch(`${apiBase}/load/${studentId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        let dbContent = data.content || {};
+                        if (studentId === '7' && JSON.stringify(dbContent).includes('蜂蜜燉梨')) {
+                            dbContent = {};
+                        }
+
+                        // 智慧合併：以有文字且較新的為主
+                        ['p1', 'p2', 'p3', 'p4'].forEach(k => {
+                            if (dbContent[k] && dbContent[k].trim().length > 0) {
+                                content[k] = dbContent[k];
+                            }
+                        });
+
+                        setParagraphs(content);
+                        if (data.guide) setHints(data.guide);
+                        feedbackData = data.feedback || {};
+                        switchTab(currentTab);
+                        if (saveStatus) saveStatus.textContent = `✅ 已載入 ${studentId} 號文章`;
+                    }
+                } catch (e) {
+                    console.warn('後端載入失敗，以本地內容為準:', e);
+                }
+            }
+
+            switchTab(currentTab);
+            isLoadingStudent = false;
+        });
+
+        async function saveDraft(showAlert = true) {
+            if (isLoadingStudent) return;
+            const studentId = studentIdSelect.value;
+            if (!studentId) {
+                if (showAlert) alert('請先選擇座號！');
+                return;
+            }
+
+            const p = getParagraphs();
+            if (studentId === '7' && JSON.stringify(p).includes('蜂蜜燉梨')) {
+                return;
+            }
+            
+            // 雙保險：必定先寫入瀏覽器本地存儲
+            try {
+                localStorage.setItem('402_draft_' + studentId, JSON.stringify(p));
+            } catch(e) {}
+
+            if (saveStatus) saveStatus.textContent = '⏳ 正在存檔...';
+
+            // 若老師主機在線，同步至後端 SQLite
+            if (isHostOnline || apiBase !== '') {
+                try {
+                    const res = await fetch(`${apiBase}/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            student_id: studentId, 
+                            content: p 
+                        })
+                    });
+                    
+                    if (res.ok) {
+                        const timeStr = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                        if (saveStatus) saveStatus.textContent = `✅ 已同步至老師主機 (${timeStr})`;
+                        if (showAlert) alert('✅ 儲存成功！已同步至老師主機。');
+                        return;
+                    }
+                } catch(e) {
+                    console.warn('同步後端失敗:', e);
+                }
+            }
+
+            // 若離線或無法連線後端
+            const timeStr = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            if (saveStatus) saveStatus.textContent = `💾 已安全儲存於平板 (${timeStr})`;
+            if (showAlert) alert('💾 儲存成功！已安全暫存在這台平板上。');
+        }
+
+        // 背景定時連線檢查與自動備份 (每 15 秒)
+        setInterval(async () => {
+            if (studentIdSelect.value) {
+                saveDraft(false);
+            }
+            // 定時探測連線狀態
+            if (!isHostOnline && apiBase === '') {
+                discoverBackend();
+            }
+        }, 15000);
+
+        async function submitEssay() {
+            const studentId = studentIdSelect.value;
+            if (!studentId) {
+                alert('請先選擇座號！');
+                return;
+            }
+
+            if (!isHostOnline && apiBase === '') {
+                await discoverBackend();
+                if (!isHostOnline) {
+                    alert('⚠️ 老師主機尚未啟動連線，無法進行 AI 批改！\n請提醒秉辰老師打開電腦上的啟動程式後，再按一次送交！');
+                    return;
+                }
+            }
+
+            // 教師密碼驗證
+            const password = prompt('✋ 請讓老師檢查過後，由老師輸入密碼才能送出 AI 檢查：');
+            if (password !== '6666') {
+                alert('❌ 密碼錯誤或已取消！請找秉辰老師確認。');
+                return;
+            }
+
+            loading.style.display = 'block';
+            feedbackBox.style.display = 'none';
+            
+            try {
+                const res = await fetch(`${apiBase}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        student_id: studentId, 
+                        content: getParagraphs(),
+                        current_tab: currentTab
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'rate_limited') {
+                    alert(data.message || '⏳ 全班目前送交人數較多，AI 正在排隊中，請等 5～10 秒後再按一次「送交檢查」即可！');
+                    return;
+                }
+                
+                feedbackData = data.feedback || {};
+                
+                if (feedbackData[currentTab] && window.marked) {
+                    feedbackContent.innerHTML = marked.parse(feedbackData[currentTab]);
+                    feedbackBox.style.display = 'block';
+                }
+            } catch (error) {
+                alert('送出檢查時發生網路錯誤，請稍後再試！');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
